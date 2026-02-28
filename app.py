@@ -27,7 +27,7 @@ target_margin_pct = st.sidebar.number_input(
     value=160.0,
     step=1.0,
     format="%.1f",
-    help="半年後に『最低でもこの維持率を満たしたい』という目標値です。例：160%。"
+    help="期間後に『最低でもこの維持率を満たしたい』という目標値です。例：160%。"
 )
 target_margin = target_margin_pct / 100.0
 
@@ -41,42 +41,76 @@ months = st.sidebar.number_input(
 )
 
 st.sidebar.subheader("レート（円）")
-gbp_rate = st.sidebar.number_input("GBP/JPY", value=210.04, step=0.01, format="%.2f",
-                                   help="計算用の為替レート。ここを変えると通貨数量とスワップ概算が変わります。")
-mxn_rate = st.sidebar.number_input("MXN/JPY", value=9.03, step=0.01, format="%.2f",
-                                   help="計算用の為替レート。")
-try_rate = st.sidebar.number_input("TRY/JPY", value=3.46, step=0.01, format="%.2f",
-                                   help="計算用の為替レート。")
+gbp_rate = st.sidebar.number_input(
+    "GBP/JPY", value=210.04, step=0.01, format="%.2f",
+    help="計算用の為替レート。ここを変えると通貨数量とスワップ概算が変わります。"
+)
+mxn_rate = st.sidebar.number_input(
+    "MXN/JPY", value=9.03, step=0.01, format="%.2f",
+    help="計算用の為替レート。"
+)
+try_rate = st.sidebar.number_input(
+    "TRY/JPY", value=3.46, step=0.01, format="%.2f",
+    help="計算用の為替レート。"
+)
 
 st.sidebar.subheader("日次スワップ（円）")
-gbp_swap_day = st.sidebar.number_input("GBP（1万通貨あたり/日）", value=178, step=1,
-                                       help="1万通貨あたりの1日スワップ（円）。")
-mxn_swap_day = st.sidebar.number_input("MXN（10万通貨あたり/日）", value=150, step=1,
-                                       help="MXNは10万通貨あたりの1日スワップ（円）。他通貨と単位が違います。")
-try_swap_day = st.sidebar.number_input("TRY（1万通貨あたり/日）", value=28, step=1,
-                                       help="1万通貨あたりの1日スワップ（円）。")
+gbp_swap_day = st.sidebar.number_input(
+    "GBP（1万通貨あたり/日）", value=178, step=1,
+    help="1万通貨あたりの1日スワップ（円）。"
+)
+mxn_swap_day = st.sidebar.number_input(
+    "MXN（10万通貨あたり/日）", value=150, step=1,
+    help="MXNは10万通貨あたりの1日スワップ（円）。他通貨と単位が違います。"
+)
+try_swap_day = st.sidebar.number_input(
+    "TRY（1万通貨あたり/日）", value=28, step=1,
+    help="1万通貨あたりの1日スワップ（円）。"
+)
 
 st.sidebar.subheader("ギャップ幅（例：0.08＝8%）")
-gbp_gap = st.sidebar.number_input("GBP ギャップ幅", value=0.08, step=0.01, format="%.2f",
-                                  help="ギャップ（急変）時にどれだけ逆行すると仮定するか。例：0.08=8%。")
-mxn_gap = st.sidebar.number_input("MXN ギャップ幅", value=0.12, step=0.01, format="%.2f",
-                                  help="例：0.12=12%。")
-try_gap = st.sidebar.number_input("TRY ギャップ幅", value=0.20, step=0.01, format="%.2f",
-                                  help="例：0.20=20%。")
+gbp_gap = st.sidebar.number_input(
+    "GBP ギャップ幅", value=0.08, step=0.01, format="%.2f",
+    help="ギャップ（急変）時にどれだけ逆行すると仮定するか。例：0.08=8%。"
+)
+mxn_gap = st.sidebar.number_input(
+    "MXN ギャップ幅", value=0.12, step=0.01, format="%.2f",
+    help="例：0.12=12%。"
+)
+try_gap = st.sidebar.number_input(
+    "TRY ギャップ幅", value=0.20, step=0.01, format="%.2f",
+    help="例：0.20=20%。"
+)
 
 st.sidebar.subheader("ギャップ確率（期間内に発生）")
-gbp_p = st.sidebar.number_input("GBP 確率", value=0.05, step=0.01, format="%.2f",
-                                help="期間内（months）にギャップが起きる確率の仮定。例：0.05=5%。")
-mxn_p = st.sidebar.number_input("MXN 確率", value=0.10, step=0.01, format="%.2f",
-                                help="例：0.10=10%。")
-try_p = st.sidebar.number_input("TRY 確率", value=0.30, step=0.01, format="%.2f",
-                                help="例：0.30=30%。")
+gbp_p = st.sidebar.number_input(
+    "GBP 確率", value=0.05, step=0.01, format="%.2f",
+    help="期間内（months）にギャップが起きる確率の仮定。例：0.05=5%。"
+)
+mxn_p = st.sidebar.number_input(
+    "MXN 確率", value=0.10, step=0.01, format="%.2f",
+    help="期間内（months）にギャップが起きる確率の仮定。例：0.10=10%。"
+)
+
+# TRYは「2回目」まで考慮
+try_p = st.sidebar.number_input(
+    "TRY 1回目 確率", value=0.30, step=0.01, format="%.2f",
+    help="期間内（months）にTRYのギャップが少なくとも1回起きる確率。例：0.30=30%。"
+)
+try_p2_given1 = st.sidebar.number_input(
+    "TRY 2回目 確率（1回目が起きた条件付き）", value=0.20, step=0.01, format="%.2f",
+    help="TRYのギャップが1回起きた場合に、さらに2回目も起きる確率。例：0.20=20%。"
+)
 
 st.sidebar.subheader("平均保有月数（換算）")
-avg_hold_year = st.sidebar.number_input("年スワップ用（例：6.5）", value=6.5, step=0.5, format="%.1f",
-                                        help="年スワップ概算の平均保有月数。過去の計算互換のためのパラメータ。")
-avg_hold_period = st.sidebar.number_input("期間スワップ用（例：3.5）", value=3.5, step=0.5, format="%.1f",
-                                          help="期間（months）に対応する平均保有月数。6か月なら3.5が自然。")
+avg_hold_year = st.sidebar.number_input(
+    "年スワップ用（例：6.5）", value=6.5, step=0.5, format="%.1f",
+    help="年スワップ概算の平均保有月数（互換用パラメータ）。"
+)
+avg_hold_period = st.sidebar.number_input(
+    "期間スワップ用（例：3.5）", value=3.5, step=0.5, format="%.1f",
+    help="期間（months）に対応する平均保有月数。6か月なら3.5が自然。"
+)
 
 # ===========================
 # Explanations
@@ -84,7 +118,7 @@ avg_hold_period = st.sidebar.number_input("期間スワップ用（例：3.5）"
 st.subheader("用語と計算の説明（このアプリの前提）")
 st.markdown(
     """
-- **ベース追加バッファ**：ストレス（ギャップ損失）を考えない場合でも、半年後に目標維持率を満たすために必要な追加現金。  
+- **ベース追加バッファ**：ストレス（ギャップ損失）を考えない場合でも、期間後に目標維持率を満たすために必要な追加現金。  
   \\(B_{base} = t(M_0 + C) - (E_0 + C)\\)（マイナスなら0円）  
   - \\(t\\)：目標維持率（例：1.60）  
   - \\(M_0\\)：起点の必要証拠金  
@@ -92,7 +126,8 @@ st.markdown(
   - \\(C\\)：期間中の積立合計（=月額合計×月数）
 
 - **期待ストレス損失（期待値）**：ギャップ幅×確率を用いた「期待損失」。  
-  \\(Loss = \\sum(月額×月数×レバ×ギャップ幅×確率)\\)
+  \\(Loss = \\sum(月額×月数×レバ×ギャップ幅×確率)\\)  
+  ※TRYは「2回目ギャップ」も考慮し、期待ギャップ回数を \\(p_1 + p_1 p_{2|1}\\) として計算します。
 
 - **追加バッファ合計**：\\(B_{base} + Loss\\)。  
   ※これは“損失”ではなく、**目標維持率を満たすために口座に置いておく必要がある現金**の目安。
@@ -101,13 +136,13 @@ st.markdown(
   年スワップを計算後、\\(期間 = 年×(avg\\_hold\\_period/avg\\_hold\\_year)\\)で按分。
 
 - **期待損益（概算）**：\\(スワップ（期間） − 期待ストレス損失\\)  
-  ※これは期待値ベースの概算で、実際の相場の順序（いつ下がるか）やスプレッド拡大等は反映しません。
+  ※期待値ベースの概算で、相場の順序（いつ下がるか）やスプレッド拡大等は反映しません。
 """
 )
 
 st.info(
     "注意：このモデルは“確率つきギャップの期待値”です。"
-    " 実際にギャップが起きた場合の瞬間的な評価損やスプレッド拡大は、期待値より厳しく出ることがあります。"
+    " 実際にギャップが起きた場合の瞬間的な評価損やスプレッド拡大は、期待値より厳しく出る可能性があります。"
 )
 
 # ===========================
@@ -117,8 +152,8 @@ st.subheader("パターン入力")
 st.caption("列: name, GBP月額(1x), TRY月額(1x), MXN月額_1x, MXN月額_2x, MXN月額_3x  ※月額は円")
 
 default = pd.DataFrame([
-    {"name":"P2", "GBP":7000, "TRY":4000, "MXN_1x":0, "MXN_2x":0, "MXN_3x":5000},
-    {"name":"CaseB", "GBP":6000, "TRY":4000, "MXN_1x":0, "MXN_2x":1000, "MXN_3x":5000},
+    {"name": "P2", "GBP": 7000, "TRY": 4000, "MXN_1x": 0, "MXN_2x": 0, "MXN_3x": 5000},
+    {"name": "CaseB", "GBP": 6000, "TRY": 4000, "MXN_1x": 0, "MXN_2x": 1000, "MXN_3x": 5000},
 ])
 
 patterns = st.data_editor(default, num_rows="dynamic", use_container_width=True)
@@ -134,12 +169,17 @@ def expected_stress_loss(row) -> float:
     mxn3 = row["MXN_3x"]
 
     loss_gbp = gbp * months * 1 * gbp_gap * gbp_p
-    loss_try = tryy * months * 1 * try_gap * try_p
+
+    # TRY: expected gap count = p1 + p1*p2_given1
+    try_expected_gap_count = try_p + (try_p * try_p2_given1)
+    loss_try = tryy * months * 1 * try_gap * try_expected_gap_count
+
     loss_mxn = (
         mxn1 * months * 1 * mxn_gap * mxn_p +
         mxn2 * months * 2 * mxn_gap * mxn_p +
         mxn3 * months * 3 * mxn_gap * mxn_p
     )
+
     return loss_gbp + loss_try + loss_mxn
 
 def annual_swap_estimate(row) -> float:
@@ -152,7 +192,7 @@ def annual_swap_estimate(row) -> float:
     # monthly purchased units
     gbp_units = (gbp * 1) / gbp_rate
     try_units = (tryy * 1) / try_rate
-    mxn_units = (mxn1*1 + mxn2*2 + mxn3*3) / mxn_rate  # leveraged MXN units
+    mxn_units = (mxn1 * 1 + mxn2 * 2 + mxn3 * 3) / mxn_rate  # leveraged MXN units
 
     gbp_annual = (gbp_units / 10_000) * gbp_swap_day * 365 * avg_hold_year
     try_annual = (try_units / 10_000) * try_swap_day * 365 * avg_hold_year
