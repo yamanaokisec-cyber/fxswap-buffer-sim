@@ -2,21 +2,21 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="スワップ&バッファ シミュレーター", layout="wide")
-
 st.title("つみたて外貨：確率ギャップモデル（期待値）シミュレーター")
 
 # ---------------------------
-# Inputs (Editable)
+# Sidebar Inputs
 # ---------------------------
-st.sidebar.header("前提（編集可）")
+st.sidebar.header("起点・目標（編集可）")
 
-# 追加：目標維持率（表示・目安用）
-target_margin = st.sidebar.number_input("目標維持率（%）", value=160.0, step=1.0, format="%.1f")
+# 起点（入力できるようにする）
+m0 = st.sidebar.number_input("起点：必要証拠金 M0（円）", value=44450, step=100)
+e0 = st.sidebar.number_input("起点：純資産 E0（円）", value=70800, step=100)
 
-# 従来どおりベース追加バッファは編集可（モデルを崩さないため）
-base_buffer = st.sidebar.number_input("ベース追加バッファ（円）", value=57920, step=100)
+target_margin_pct = st.sidebar.number_input("目標維持率（%）", value=160.0, step=1.0, format="%.1f")
+target_margin = target_margin_pct / 100.0
 
-months = st.sidebar.number_input("計算期間（月）", value=6, min_value=1, max_value=24, step=1)
+months = st.sidebar.number_input("積立期間（月）", value=6, min_value=1, max_value=24, step=1)
 
 st.sidebar.subheader("レート（円）")
 gbp_rate = st.sidebar.number_input("GBP/JPY", value=210.04, step=0.01, format="%.2f")
@@ -33,7 +33,7 @@ gbp_gap = st.sidebar.number_input("GBP ギャップ幅", value=0.08, step=0.01, 
 mxn_gap = st.sidebar.number_input("MXN ギャップ幅", value=0.12, step=0.01, format="%.2f")
 try_gap = st.sidebar.number_input("TRY ギャップ幅", value=0.20, step=0.01, format="%.2f")
 
-st.sidebar.subheader("ギャップ確率（6か月で発生）")
+st.sidebar.subheader("ギャップ確率（期間内に発生）")
 gbp_p = st.sidebar.number_input("GBP 確率", value=0.05, step=0.01, format="%.2f")
 mxn_p = st.sidebar.number_input("MXN 確率", value=0.10, step=0.01, format="%.2f")
 try_p = st.sidebar.number_input("TRY 確率", value=0.30, step=0.01, format="%.2f")
@@ -42,17 +42,12 @@ st.sidebar.subheader("平均保有月数（換算）")
 avg_hold_year = st.sidebar.number_input("年スワップ用（例：6.5）", value=6.5, step=0.5, format="%.1f")
 avg_hold_period = st.sidebar.number_input("期間スワップ用（例：3.5）", value=3.5, step=0.5, format="%.1f")
 
-# ---------------------------
-# Notes (Japanese)
-# ---------------------------
 st.info(
-    "注：本アプリは『確率つきギャップ（ジャンプ）モデルの期待値』で、"
-    "追加バッファ＝ベース追加バッファ＋期待ストレス損失、"
-    "スワップは日次スワップが期間中一定と仮定して概算します。"
+    "注：本アプリは『確率つきギャップ（ジャンプ）モデルの期待値』です。\n"
+    "- 追加バッファ＝ベース追加バッファ（起点M0/E0と目標維持率から算出）＋期待ストレス損失\n"
+    "- スワップは日次スワップが一定と仮定した概算です。\n"
     "急変（ギャップ）が実際に起きた場合は、期待値より厳しくなる可能性があります。"
 )
-
-st.caption(f"目標維持率（入力値）：{target_margin:.1f}%（※本モデルの計算式そのものはベース追加バッファを基準にしています）")
 
 # ---------------------------
 # Pattern input
@@ -108,26 +103,34 @@ def period_swap_from_annual(annual: float) -> float:
 
 rows = []
 for _, r in patterns.iterrows():
+    monthly_total = float(r["GBP"] + r["TRY"] + r["MXN_1x"] + r["MXN_2x"] + r["MXN_3x"])
+    contrib_total = monthly_total * months  # C
+
+    # ベース追加バッファ（ストレスなし）を起点から自動算出
+    base_buffer = target_margin * (m0 + contrib_total) - (e0 + contrib_total)
+    if base_buffer < 0:
+        base_buffer = 0.0
+
     exp_loss = expected_stress_loss(r)
     add_buffer = base_buffer + exp_loss
+
     annual_swap = annual_swap_estimate(r)
     period_swap = period_swap_from_annual(annual_swap)
     ratio = (period_swap / add_buffer) if add_buffer > 0 else 0.0
 
-    monthly_total = int(r["GBP"] + r["TRY"] + r["MXN_1x"] + r["MXN_2x"] + r["MXN_3x"])
-
     rows.append({
         "パターン": r["name"],
-        "月額合計（円）": monthly_total,
+        "月額合計（円）": int(monthly_total),
+        "ベース追加バッファ（円）": round(base_buffer),
         "期待ストレス損失（円）": round(exp_loss),
-        "追加バッファ（円）": round(add_buffer),
+        "追加バッファ合計（円）": round(add_buffer),
         "スワップ（期間・概算 円）": round(period_swap),
-        "スワップ/バッファ（%）": round(ratio * 100, 2),
+        "スワップ/追加バッファ（%）": round(ratio * 100, 2),
     })
 
-out = pd.DataFrame(rows).sort_values("スワップ/バッファ（%）", ascending=False)
+out = pd.DataFrame(rows).sort_values("スワップ/追加バッファ（%）", ascending=False)
 
-st.subheader("結果（日本語）")
+st.subheader("結果")
 st.dataframe(out, use_container_width=True)
 
-st.caption("注：『スワップ（期間）』は年スワップ概算を（期間平均保有/年平均保有）で按分した概算です。")
+st.caption("注：『ベース追加バッファ』は、ストレス無しで目標維持率を満たすための追加現金。『期待ストレス損失』はギャップ幅×確率の期待値。")
