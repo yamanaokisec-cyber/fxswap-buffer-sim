@@ -1,16 +1,21 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Swap & Buffer Simulator", layout="wide")
+st.set_page_config(page_title="スワップ&バッファ シミュレーター", layout="wide")
 
-st.title("SBIFX つみたて外貨：確率ギャップモデル（期待値）シミュレーター")
+st.title("つみたて外貨：確率ギャップモデル（期待値）シミュレーター")
 
 # ---------------------------
-# Fixed/Editable globals
+# Inputs (Editable)
 # ---------------------------
 st.sidebar.header("前提（編集可）")
 
+# 追加：目標維持率（表示・目安用）
+target_margin = st.sidebar.number_input("目標維持率（%）", value=160.0, step=1.0, format="%.1f")
+
+# 従来どおりベース追加バッファは編集可（モデルを崩さないため）
 base_buffer = st.sidebar.number_input("ベース追加バッファ（円）", value=57920, step=100)
+
 months = st.sidebar.number_input("計算期間（月）", value=6, min_value=1, max_value=24, step=1)
 
 st.sidebar.subheader("レート（円）")
@@ -23,24 +28,36 @@ gbp_swap_day = st.sidebar.number_input("GBP（1万通貨あたり/日）", value
 mxn_swap_day = st.sidebar.number_input("MXN（10万通貨あたり/日）", value=150, step=1)
 try_swap_day = st.sidebar.number_input("TRY（1万通貨あたり/日）", value=28, step=1)
 
-st.sidebar.subheader("ギャップ幅（マイナス％）")
-gbp_gap = st.sidebar.number_input("GBP ギャップ幅（例 0.08）", value=0.08, step=0.01, format="%.2f")
-mxn_gap = st.sidebar.number_input("MXN ギャップ幅（例 0.12）", value=0.12, step=0.01, format="%.2f")
-try_gap = st.sidebar.number_input("TRY ギャップ幅（例 0.20）", value=0.20, step=0.01, format="%.2f")
+st.sidebar.subheader("ギャップ幅（例：0.08＝8%）")
+gbp_gap = st.sidebar.number_input("GBP ギャップ幅", value=0.08, step=0.01, format="%.2f")
+mxn_gap = st.sidebar.number_input("MXN ギャップ幅", value=0.12, step=0.01, format="%.2f")
+try_gap = st.sidebar.number_input("TRY ギャップ幅", value=0.20, step=0.01, format="%.2f")
 
 st.sidebar.subheader("ギャップ確率（6か月で発生）")
-gbp_p = st.sidebar.number_input("GBP 確率（例 0.05）", value=0.05, step=0.01, format="%.2f")
-mxn_p = st.sidebar.number_input("MXN 確率（例 0.10）", value=0.10, step=0.01, format="%.2f")
-try_p = st.sidebar.number_input("TRY 確率（例 0.30）", value=0.30, step=0.01, format="%.2f")
+gbp_p = st.sidebar.number_input("GBP 確率", value=0.05, step=0.01, format="%.2f")
+mxn_p = st.sidebar.number_input("MXN 確率", value=0.10, step=0.01, format="%.2f")
+try_p = st.sidebar.number_input("TRY 確率", value=0.30, step=0.01, format="%.2f")
 
 st.sidebar.subheader("平均保有月数（換算）")
-avg_hold_year = st.sidebar.number_input("年スワップ用（例 6.5）", value=6.5, step=0.5, format="%.1f")
-avg_hold_period = st.sidebar.number_input("期間スワップ用（例 3.5）", value=3.5, step=0.5, format="%.1f")
+avg_hold_year = st.sidebar.number_input("年スワップ用（例：6.5）", value=6.5, step=0.5, format="%.1f")
+avg_hold_period = st.sidebar.number_input("期間スワップ用（例：3.5）", value=3.5, step=0.5, format="%.1f")
+
+# ---------------------------
+# Notes (Japanese)
+# ---------------------------
+st.info(
+    "注：本アプリは『確率つきギャップ（ジャンプ）モデルの期待値』で、"
+    "追加バッファ＝ベース追加バッファ＋期待ストレス損失、"
+    "スワップは日次スワップが期間中一定と仮定して概算します。"
+    "急変（ギャップ）が実際に起きた場合は、期待値より厳しくなる可能性があります。"
+)
+
+st.caption(f"目標維持率（入力値）：{target_margin:.1f}%（※本モデルの計算式そのものはベース追加バッファを基準にしています）")
 
 # ---------------------------
 # Pattern input
 # ---------------------------
-st.subheader("パターン入力（例：P2 / CaseB）")
+st.subheader("パターン入力")
 st.caption("列: name, GBP月額(1x), TRY月額(1x), MXN月額_1x, MXN月額_2x, MXN月額_3x  ※月額は円")
 
 default = pd.DataFrame([
@@ -60,7 +77,6 @@ def expected_stress_loss(row) -> float:
     mxn2 = row["MXN_2x"]
     mxn3 = row["MXN_3x"]
 
-    # expected loss = sum(monthly * months * lev * gap * prob)
     loss_gbp = gbp * months * 1 * gbp_gap * gbp_p
     loss_try = tryy * months * 1 * try_gap * try_p
     loss_mxn = (
@@ -77,10 +93,9 @@ def annual_swap_estimate(row) -> float:
     mxn2 = row["MXN_2x"]
     mxn3 = row["MXN_3x"]
 
-    # monthly purchased units
     gbp_units = (gbp * 1) / gbp_rate
     try_units = (tryy * 1) / try_rate
-    mxn_units = (mxn1*1 + mxn2*2 + mxn3*3) / mxn_rate  # total MXN units (leveraged)
+    mxn_units = (mxn1*1 + mxn2*2 + mxn3*3) / mxn_rate  # leveraged MXN units
 
     gbp_annual = (gbp_units / 10_000) * gbp_swap_day * 365 * avg_hold_year
     try_annual = (try_units / 10_000) * try_swap_day * 365 * avg_hold_year
@@ -89,7 +104,6 @@ def annual_swap_estimate(row) -> float:
     return gbp_annual + try_annual + mxn_annual
 
 def period_swap_from_annual(annual: float) -> float:
-    # period swap = annual * (avg_hold_period / avg_hold_year)
     return annual * (avg_hold_period / avg_hold_year)
 
 rows = []
@@ -99,18 +113,21 @@ for _, r in patterns.iterrows():
     annual_swap = annual_swap_estimate(r)
     period_swap = period_swap_from_annual(annual_swap)
     ratio = (period_swap / add_buffer) if add_buffer > 0 else 0.0
+
+    monthly_total = int(r["GBP"] + r["TRY"] + r["MXN_1x"] + r["MXN_2x"] + r["MXN_3x"])
+
     rows.append({
-        "name": r["name"],
-        "expected_stress_loss": round(exp_loss),
-        "add_buffer": round(add_buffer),
-        "swap_6m": round(period_swap),
-        "swap_over_buffer": round(ratio * 100, 2),
-        "monthly_total": int(r["GBP"] + r["TRY"] + r["MXN_1x"] + r["MXN_2x"] + r["MXN_3x"]),
+        "パターン": r["name"],
+        "月額合計（円）": monthly_total,
+        "期待ストレス損失（円）": round(exp_loss),
+        "追加バッファ（円）": round(add_buffer),
+        "スワップ（期間・概算 円）": round(period_swap),
+        "スワップ/バッファ（%）": round(ratio * 100, 2),
     })
 
-out = pd.DataFrame(rows).sort_values("swap_over_buffer", ascending=False)
+out = pd.DataFrame(rows).sort_values("スワップ/バッファ（%）", ascending=False)
 
-st.subheader("結果")
+st.subheader("結果（日本語）")
 st.dataframe(out, use_container_width=True)
 
-st.caption("注：これは『確率つきギャップの期待値モデル』です。実際の急変は期待値より厳しく出ることがあります。")
+st.caption("注：『スワップ（期間）』は年スワップ概算を（期間平均保有/年平均保有）で按分した概算です。")
